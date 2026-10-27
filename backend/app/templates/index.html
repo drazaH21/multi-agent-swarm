@@ -1,0 +1,870 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amsavision Multi-Agent Pixel Office Command Center</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #030712; color: #f3f4f6; }
+        .pixel-font { font-family: 'Press Start 2P', monospace; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        canvas { image-rendering: pixelated; }
+        .agent-pill:hover { transform: translateY(-1px); }
+    </style>
+</head>
+<body class="p-4 max-w-[1600px] mx-auto">
+    <header class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
+        <div>
+            <div class="flex items-center space-x-3">
+                <span class="h-3 w-3 rounded-full bg-emerald-500 animate-pulse"></span>
+                <h1 class="text-sm font-bold tracking-tight text-white pixel-font">AMSAVISION PIXEL HEADQUARTERS</h1>
+                <span class="text-[10px] px-2 py-0.5 rounded bg-indigo-900/60 text-indigo-300 font-mono border border-indigo-700/50">8-AGENT LIVE FLOOR</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">Autonomous Multi-Agent Conglomerate Operations &bull; Click any character or workstation to interact</p>
+        </div>
+        <div class="flex items-center space-x-2.5">
+            <button id="shiftToggleBtn" class="bg-slate-900 hover:bg-slate-800 text-amber-300 border border-amber-800/80 px-3 py-1.5 rounded-lg text-xs font-mono flex items-center space-x-2 transition-all">
+                <span id="shiftIndicator" class="h-2 w-2 rounded-full bg-emerald-400"></span>
+                <span id="shiftLabel">SHIFT: WORK HOURS (DAY)</span>
+            </button>
+            <select id="tenantSelect" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none">
+                <option value="ALL">Consolidated (All 4 Entities)</option>
+                <option value="ams_retail">Amsavision Retail</option>
+                <option value="ams_assoc">AMS Associates</option>
+                <option value="mvm_dist">MVM Distribution</option>
+                <option value="dream_sleep">Dream & Sleep</option>
+            </select>
+            <button id="debateBtn" class="bg-purple-700 hover:bg-purple-600 text-white font-medium px-3 py-1.5 rounded-lg text-xs shadow-lg shadow-purple-900/30">Debate (60 Mattresses)</button>
+            <button id="exportBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium px-3 py-1.5 rounded-lg text-xs border border-slate-700">Export Brief</button>
+            <button id="auditBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-3 py-1.5 rounded-lg text-xs shadow-lg shadow-indigo-900/30">Run Audit</button>
+        </div>
+    </header>
+
+    <div class="grid grid-cols-12 gap-4">
+        <!-- Main Office Floor & Terminal -->
+        <div class="col-span-8 flex flex-col space-y-3">
+            <!-- Quick Agent Selector Strip (Guarantees Instant Switching) -->
+            <div class="bg-slate-900/70 border border-slate-800 rounded-xl p-2 flex items-center justify-between overflow-x-auto space-x-1">
+                <span class="text-[10px] mono text-slate-400 px-2 uppercase font-semibold">Switch Agent:</span>
+                <div id="agentPills" class="flex space-x-1.5 flex-1"></div>
+            </div>
+
+            <!-- The Pixel Office Canvas -->
+            <div class="bg-slate-900/50 border border-slate-800 rounded-xl p-2 relative flex flex-col items-center">
+                <div class="w-full flex justify-between items-center mb-1 px-2 text-[10px] mono text-slate-400">
+                    <span>FLOOR PLAN: EXECUTIVE GLASS CABIN &bull; OPEN FLOOR WORKSTATIONS &bull; BREAK LOUNGE</span>
+                    <span id="rateLimitBadge" class="text-indigo-400">RPM: 0/60 | TPM: 0/40000 | Cache: 0 Hits</span>
+                </div>
+                <canvas id="officeCanvas" width="900" height="520" class="rounded-lg border border-slate-800 cursor-pointer w-full shadow-2xl"></canvas>
+            </div>
+
+            <!-- Inter-Agent Reasoning Drawer -->
+            <div id="debateDrawer" class="bg-slate-900/60 border border-purple-900/40 rounded-xl p-3 hidden">
+                <div class="flex items-center justify-between mb-2 border-b border-slate-800 pb-1.5">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-purple-300 mono flex items-center space-x-2">
+                        <span class="h-2 w-2 rounded-full bg-purple-400 animate-ping"></span>
+                        <span>Multi-Agent Reasoning & Cross-Domain Debate</span>
+                    </h3>
+                    <span class="text-[9px] px-2 py-0.5 rounded bg-purple-950 text-purple-200 border border-purple-800 mono">COMPLETE</span>
+                </div>
+                <div id="debateStepsContainer" class="space-y-1.5 text-xs"></div>
+            </div>
+
+            <!-- Active Agent Terminal & Dialogue -->
+            <div class="bg-slate-900/70 border border-slate-800 rounded-xl p-3.5">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center space-x-2.5">
+                        <span id="activeAgentDot" class="h-3 w-3 rounded-full bg-indigo-500 shadow-md"></span>
+                        <span id="chatAgentTitle" class="text-xs font-bold tracking-wider text-white pixel-font text-[10px]">SUPERVISOR AGENT</span>
+                        <span id="agentRoleTag" class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-indigo-300 font-mono border border-slate-700">Executive Cabin</span>
+                    </div>
+                    <span id="sessionTag" class="text-[10px] mono text-slate-500">Thread: Active</span>
+                </div>
+                <div class="flex space-x-2">
+                    <input id="chatInput" type="text" placeholder="Direct query to current agent or say 'You're up'..." class="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-mono">
+                    <button id="chatBtn" class="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg text-xs font-semibold text-white transition-all shadow-md">Send</button>
+                </div>
+                <div id="chatResponseBox" class="mt-2.5 p-3 bg-slate-950 rounded-lg border border-slate-800 text-xs text-slate-300 hidden">
+                    <pre id="chatAnswer" class="leading-relaxed whitespace-pre-wrap font-sans text-xs"></pre>
+                    <span id="chatSource" class="text-[10px] text-slate-500 block mt-1.5 mono"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Telemetry, Actions & Audit HUD -->
+        <div class="col-span-4 flex flex-col space-y-3">
+            <!-- HITL Action Approval Queue -->
+            <div class="bg-slate-900/60 border border-amber-900/40 rounded-xl p-3.5">
+                <h3 class="text-xs font-bold text-amber-300 uppercase tracking-wider mb-2 flex items-center justify-between">
+                    <span>Action Approval Queue (HITL)</span>
+                    <span id="actionCountBadge" class="text-[10px] px-2 py-0.5 rounded bg-amber-900/60 text-amber-200 font-mono">3 PENDING</span>
+                </h3>
+                <div id="actionQueueContainer" class="space-y-2 max-h-48 overflow-y-auto pr-1"></div>
+            </div>
+
+            <!-- Agent Telemetry Inspection Card -->
+            <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-3.5">
+                <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2 flex items-center justify-between">
+                    <span>Agent Telemetry HUD</span>
+                    <span id="agentStatusBadge" class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300">AT DESK</span>
+                </h3>
+                <div class="space-y-2 text-xs">
+                    <div>
+                        <span class="text-[10px] text-slate-500 block">Agent Name & Subsystem</span>
+                        <p id="hudName" class="font-bold text-white text-sm">Supervisor Agent</p>
+                    </div>
+                    <div>
+                        <span class="text-[10px] text-slate-500 block">Current Action</span>
+                        <p id="hudAction" class="text-slate-300 mono text-[11px] bg-slate-950 p-2 rounded border border-slate-800">Overseeing conglomerate operations from cabin</p>
+                    </div>
+                    <div>
+                        <span class="text-[10px] text-slate-500 block">Physical Location</span>
+                        <p id="hudLocation" class="text-slate-300">Executive Glass Office (Cabin 101)</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Executive Synthesis Report Card -->
+            <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-3.5 flex-1">
+                <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Synthesis & Findings</h3>
+                <div id="reportContainer" class="text-xs text-slate-400 space-y-2 leading-relaxed">
+                    <p class="italic text-slate-500 text-[11px]">Click "Run Audit" to trigger concurrent multi-agent graph...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('officeCanvas');
+        const ctx = canvas.getContext('2d');
+        const clientSessionId = 'session_' + Math.random().toString(36).substring(2, 9);
+        document.getElementById('sessionTag').innerText = 'Thread: ' + clientSessionId;
+
+        let isAfterNinePM = false;
+        let selectedAgentId = 'supervisor';
+        let speechBubble = { text: '', agentId: 'supervisor', timer: 0 };
+
+        // 8 Swarm Agents with exact pixel coordinates, desks, and break lounge spots
+        const agents = [
+            {
+                id: 'supervisor', name: 'Supervisor Agent', shortName: 'Supervisor', role: 'Executive Orchestrator',
+                x: 450, y: 75, deskX: 450, deskY: 75, breakX: 450, breakY: 75,
+                color: '#6366f1', status: 'AT DESK', inCabin: true,
+                spriteColor: '#1e1b4b', hairColor: '#e2e8f0', accessory: 'tie',
+                facing: 'down', onBreak: false
+            },
+            {
+                id: 'attendance', name: 'Attendance Agent', shortName: 'Attendance', role: 'Biometric Shift Lead',
+                x: 140, y: 220, deskX: 140, deskY: 220, breakX: 740, breakY: 410,
+                color: '#10b981', status: 'AT DESK', inCabin: false,
+                spriteColor: '#064e3b', hairColor: '#92400e', accessory: 'scanner',
+                facing: 'down', onBreak: false
+            },
+            {
+                id: 'sales', name: 'Sales & GMV Agent', shortName: 'Sales', role: 'Revenue & dbt Analyst',
+                x: 320, y: 220, deskX: 320, deskY: 220, breakX: 770, breakY: 410,
+                color: '#3b82f6', status: 'AT DESK', inCabin: false,
+                spriteColor: '#1d4ed8', hairColor: '#18181b', accessory: 'tablet',
+                facing: 'down', onBreak: false
+            },
+            {
+                id: 'support', name: 'Customer Support Agent', shortName: 'Support', role: 'Warranty & SLA Lead',
+                x: 580, y: 220, deskX: 580, deskY: 220, breakX: 810, breakY: 410,
+                color: '#06b6d4', status: 'AT DESK', inCabin: false,
+                spriteColor: '#0e7490', hairColor: '#78350f', accessory: 'headset',
+                facing: 'down', onBreak: false
+            },
+            {
+                id: 'auditor', name: 'GST Auditor Agent', shortName: 'Auditor', role: 'Tax Compliance Auditor',
+                x: 140, y: 350, deskX: 140, deskY: 350, breakX: 740, breakY: 450,
+                color: '#f59e0b', status: 'AT DESK', inCabin: false,
+                spriteColor: '#b45309', hairColor: '#451a03', accessory: 'ledger',
+                facing: 'down', onBreak: false
+            },
+            {
+                id: 'inventory', name: 'Inventory & Foam Agent', shortName: 'Inventory', role: 'Materials Coordinator',
+                x: 320, y: 350, deskX: 320, deskY: 350, breakX: 770, breakY: 450,
+                color: '#ec4899', status: 'AT DESK', inCabin: false,
+                spriteColor: '#be185d', hairColor: '#fbbf24', accessory: 'helmet',
+                facing: 'down', onBreak: false
+            },
+            {
+                id: 'logistics', name: 'Logistics Fleet Agent', shortName: 'Logistics', role: 'Dispatch Controller',
+                x: 450, y: 350, deskX: 450, deskY: 350, breakX: 810, breakY: 450,
+                color: '#14b8a6', status: 'AT DESK', inCabin: false,
+                spriteColor: '#0f766e', hairColor: '#172554', accessory: 'clipboard',
+                facing: 'down', onBreak: false
+            },
+            {
+                id: 'hr', name: 'HR & Payroll Agent', shortName: 'HR', role: 'Compensation Specialist',
+                x: 580, y: 350, deskX: 580, deskY: 350, breakX: 840, breakY: 430,
+                color: '#a855f7', status: 'AT DESK', inCabin: false,
+                spriteColor: '#7e22ce', hairColor: '#0284c7', accessory: 'lanyard',
+                facing: 'down', onBreak: false
+            }
+        ];
+
+        // Populate Quick Agent Selector Strip
+        const pillsContainer = document.getElementById('agentPills');
+        pillsContainer.innerHTML = agents.map(a => `
+            <button onclick="selectAgent('${a.id}')" id="pill-${a.id}" class="agent-pill text-[10px] px-2.5 py-1 rounded font-mono border transition-all flex items-center space-x-1.5 ${a.id === selectedAgentId ? 'bg-indigo-900/80 border-indigo-400 text-white' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'}">
+                <span class="h-1.5 w-1.5 rounded-full" style="background:${a.color}"></span>
+                <span>${a.shortName}</span>
+            </button>
+        `).join('');
+
+        // Office Art Assets Drawing Functions
+        function drawPottedPlant(x, y) {
+            // Terracotta pot
+            ctx.fillStyle = '#b45309';
+            ctx.fillRect(x - 5, y + 2, 10, 8);
+            ctx.fillStyle = '#78350f';
+            ctx.fillRect(x - 6, y, 12, 3);
+            // Foliage / Leaves
+            ctx.fillStyle = '#15803d';
+            ctx.fillRect(x - 7, y - 7, 14, 8);
+            ctx.fillStyle = '#22c55e';
+            ctx.fillRect(x - 5, y - 11, 10, 6);
+            ctx.fillStyle = '#4ade80';
+            ctx.fillRect(x - 2, y - 13, 4, 4);
+        }
+
+        function drawWaterCooler(x, y) {
+            // Stand
+            ctx.fillStyle = '#cbd5e1';
+            ctx.fillRect(x - 6, y - 5, 12, 22);
+            // Blue tank
+            ctx.fillStyle = '#0284c7';
+            ctx.fillRect(x - 5, y - 18, 10, 13);
+            ctx.fillStyle = '#38bdf8';
+            ctx.fillRect(x - 3, y - 16, 4, 9);
+            // Taps
+            ctx.fillStyle = '#dc2626'; ctx.fillRect(x - 4, y + 2, 3, 2);
+            ctx.fillStyle = '#2563eb'; ctx.fillRect(x + 1, y + 2, 3, 2);
+        }
+
+        function drawCoffeeBar(x, y) {
+            // Wooden Counter
+            ctx.fillStyle = '#5c2b16';
+            ctx.fillRect(x, y, 48, 20);
+            ctx.fillStyle = '#7c3f1d';
+            ctx.fillRect(x, y, 48, 4);
+            // Coffee Machine
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(x + 8, y - 14, 18, 15);
+            ctx.fillStyle = '#dc2626';
+            ctx.fillRect(x + 12, y - 10, 3, 3);
+            ctx.fillStyle = '#38bdf8';
+            ctx.fillRect(x + 17, y - 6, 6, 5); // Carafe
+        }
+
+        function drawSofa(x, y, width) {
+            ctx.fillStyle = '#831843'; // Maroon Leather
+            ctx.fillRect(x, y, width, 18);
+            ctx.fillStyle = '#9d174d';
+            ctx.fillRect(x + 2, y - 6, width - 4, 8); // Backrest
+            ctx.fillStyle = '#700d36';
+            ctx.fillRect(x - 3, y - 4, 4, 22); // Left arm
+            ctx.fillRect(x + width - 1, y - 4, 4, 22); // Right arm
+        }
+
+        // Draw Complete Office Environment
+        function renderOffice() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. Hardwood Floor Tiles (Oak Parquet Planks)
+            for (let r = 0; r < canvas.height; r += 20) {
+                for (let c = 0; c < canvas.width; c += 36) {
+                    ctx.fillStyle = ((r / 20 + c / 36) % 2 === 0) ? '#171923' : '#141720';
+                    ctx.fillRect(c, r, 36, 20);
+                    ctx.strokeStyle = '#0d1017';
+                    ctx.lineWidth = 0.5;
+                    ctx.strokeRect(c, r, 36, 20);
+                }
+            }
+
+            // 2. Executive Glass Cabin (Top-Center)
+            // Navy Executive Rug
+            ctx.fillStyle = '#1e1b4b';
+            ctx.fillRect(320, 15, 260, 110);
+            ctx.strokeStyle = '#312e81';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(320, 15, 260, 110);
+
+            // Glass Partition Walls
+            ctx.strokeStyle = 'rgba(99, 102, 241, 0.5)';
+            ctx.lineWidth = 3;
+            // North wall
+            ctx.strokeRect(310, 8, 280, 125);
+            // Doorway gap
+            ctx.fillStyle = '#171923';
+            ctx.fillRect(430, 130, 40, 6);
+
+            // Metal posts
+            ctx.fillStyle = '#818cf8';
+            ctx.fillRect(308, 6, 6, 6);
+            ctx.fillRect(586, 6, 6, 6);
+            ctx.fillRect(308, 130, 6, 6);
+            ctx.fillRect(586, 130, 6, 6);
+
+            // Cabin Signboard
+            ctx.fillStyle = '#a5b4fc';
+            ctx.font = '8px "Press Start 2P", monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('DIRECTOR & SUPERVISOR CABIN', 450, 22);
+
+            // Executive Mahogany Desk
+            ctx.fillStyle = '#451a03';
+            ctx.fillRect(405, 65, 90, 30);
+            ctx.fillStyle = '#78350f';
+            ctx.fillRect(405, 65, 90, 4);
+            // Dual Monitor Setup
+            ctx.fillStyle = '#38bdf8';
+            ctx.fillRect(422, 53, 22, 11);
+            ctx.fillRect(452, 53, 22, 11);
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(430, 64, 6, 2);
+            ctx.fillRect(460, 64, 6, 2);
+
+            // Bookshelf in cabin
+            ctx.fillStyle = '#271c19';
+            ctx.fillRect(325, 25, 36, 60);
+            for (let b = 32; b < 80; b += 14) {
+                ctx.fillStyle = '#78350f'; ctx.fillRect(325, b, 36, 2);
+                ctx.fillStyle = '#e11d48'; ctx.fillRect(328, b - 8, 4, 8);
+                ctx.fillStyle = '#2563eb'; ctx.fillRect(333, b - 8, 5, 8);
+                ctx.fillStyle = '#ca8a04'; ctx.fillRect(340, b - 8, 4, 8);
+            }
+
+            // Plants inside cabin
+            drawPottedPlant(330, 115);
+            drawPottedPlant(570, 115);
+
+            // 3. Open Floor Workstations
+            const desks = [
+                { id: 'attendance', x: 140, y: 220, label: 'ATTENDANCE' },
+                { id: 'sales', x: 320, y: 220, label: 'SALES' },
+                { id: 'support', x: 580, y: 220, label: 'SUPPORT' },
+                { id: 'auditor', x: 140, y: 350, label: 'GST AUDIT' },
+                { id: 'inventory', x: 320, y: 350, label: 'INVENTORY' },
+                { id: 'logistics', x: 450, y: 350, label: 'LOGISTICS' },
+                { id: 'hr', x: 580, y: 350, label: 'HR / PAYROLL' }
+            ];
+
+            desks.forEach(d => {
+                // Desk surface
+                ctx.fillStyle = '#1e293b';
+                ctx.fillRect(d.x - 30, d.y - 12, 60, 26);
+                ctx.fillStyle = '#334155';
+                ctx.fillRect(d.x - 30, d.y - 12, 60, 3);
+
+                // Computer Monitor
+                ctx.fillStyle = '#38bdf8';
+                ctx.fillRect(d.x - 12, d.y - 25, 24, 12);
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(d.x - 4, d.y - 13, 8, 2);
+
+                // Coffee mug
+                ctx.fillStyle = '#f43f5e';
+                ctx.fillRect(d.x + 18, d.y - 7, 4, 5);
+
+                // Desk Label on floor
+                ctx.fillStyle = '#475569';
+                ctx.font = '7px "Press Start 2P", monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText(d.label, d.x, d.y + 26);
+
+                // Wastepaper bin next to desk
+                ctx.fillStyle = '#334155';
+                ctx.fillRect(d.x + 34, d.y + 2, 8, 10);
+            });
+
+            // Floor Plants
+            drawPottedPlant(50, 180);
+            drawPottedPlant(50, 330);
+            drawPottedPlant(50, 470);
+            drawPottedPlant(240, 280);
+            drawPottedPlant(500, 280);
+
+            // 4. Break Lounge (Bottom-Right)
+            // Carpet
+            ctx.fillStyle = '#1c1917';
+            ctx.fillRect(700, 320, 185, 180);
+            ctx.strokeStyle = '#44403c';
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(700, 320, 185, 180);
+
+            // Lounge Sign
+            ctx.fillStyle = '#f59e0b';
+            ctx.font = '7px "Press Start 2P", monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('BREAK LOUNGE', 790, 338);
+
+            // Sofas
+            drawSofa(730, 465, 120);
+
+            // Coffee Counter
+            drawCoffeeBar(720, 350);
+
+            // Water Cooler
+            drawWaterCooler(850, 360);
+
+            // 5. Update and Draw Agents (Interpolated movement)
+            agents.forEach(a => {
+                const targetX = a.onBreak ? a.breakX : a.deskX;
+                const targetY = a.onBreak ? a.breakY : a.deskY;
+
+                // Smooth walking interpolation
+                const dx = targetX - a.x;
+                const dy = targetY - a.y;
+                if (Math.abs(dx) > 1) a.x += dx * 0.08;
+                if (Math.abs(dy) > 1) a.y += dy * 0.08;
+
+                drawCharacterSprite(a);
+            });
+
+            // 6. Draw Speech Bubble if active
+            if (speechBubble.timer > 0) {
+                speechBubble.timer--;
+                const spkAgent = agents.find(a => a.id === speechBubble.agentId);
+                if (spkAgent) {
+                    drawSpeechBubble(spkAgent.x, spkAgent.y - 32, speechBubble.text);
+                }
+            }
+
+            requestAnimationFrame(renderOffice);
+        }
+
+        function drawCharacterSprite(agent) {
+            const px = Math.round(agent.x);
+            const py = Math.round(agent.y);
+            const isSelected = selectedAgentId === agent.id;
+
+            // Character Shadow
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.beginPath();
+            ctx.ellipse(px, py + 12, 11, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // High-visibility selection bracket
+            if (isSelected) {
+                ctx.strokeStyle = '#38bdf8';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(px - 14, py - 20, 28, 36);
+
+                // Small arrow pointer above head
+                ctx.fillStyle = '#38bdf8';
+                ctx.beginPath();
+                ctx.moveTo(px, py - 22);
+                ctx.lineTo(px - 4, py - 28);
+                ctx.lineTo(px + 4, py - 28);
+                ctx.fill();
+            }
+
+            // Head (Skin)
+            ctx.fillStyle = '#fed7aa';
+            ctx.fillRect(px - 5, py - 13, 10, 8);
+
+            // Hair
+            ctx.fillStyle = agent.hairColor;
+            ctx.fillRect(px - 6, py - 17, 12, 5);
+            ctx.fillRect(px - 7, py - 13, 2, 5);
+
+            // Eyes
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(px - 3, py - 10, 2, 2);
+            ctx.fillRect(px + 1, py - 10, 2, 2);
+
+            // Torso / Profession Attire
+            ctx.fillStyle = agent.spriteColor;
+            ctx.fillRect(px - 6, py - 5, 12, 11);
+
+            // Specific Accessories
+            if (agent.accessory === 'tie') {
+                ctx.fillStyle = '#fbbf24'; ctx.fillRect(px - 1, py - 4, 2, 6);
+            } else if (agent.accessory === 'headset') {
+                ctx.fillStyle = '#06b6d4';
+                ctx.fillRect(px - 7, py - 15, 2, 7);
+                ctx.fillRect(px + 5, py - 15, 2, 7);
+                ctx.fillRect(px - 6, py - 16, 12, 2);
+            } else if (agent.accessory === 'helmet') {
+                ctx.fillStyle = '#ec4899';
+                ctx.fillRect(px - 7, py - 18, 14, 4);
+            } else if (agent.accessory === 'scanner') {
+                ctx.fillStyle = '#10b981';
+                ctx.fillRect(px + 6, py - 2, 3, 5);
+            } else if (agent.accessory === 'clipboard') {
+                ctx.fillStyle = '#f59e0b';
+                ctx.fillRect(px + 5, py - 3, 4, 6);
+            }
+
+            // Legs
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(px - 5, py + 6, 4, 6);
+            ctx.fillRect(px + 1, py + 6, 4, 6);
+
+            // Name Banner
+            ctx.fillStyle = isSelected ? '#ffffff' : '#cbd5e1';
+            ctx.font = 'bold 9px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(agent.shortName, px, py - 22);
+
+            // Coffee Cup icon if on break
+            if (agent.onBreak) {
+                ctx.fillStyle = '#fbbf24';
+                ctx.font = '8px JetBrains Mono';
+                ctx.fillText('☕ Break', px, py + 22);
+            }
+        }
+
+        function drawSpeechBubble(x, y, text) {
+            ctx.font = '9px JetBrains Mono, monospace';
+            const textWidth = ctx.measureText(text).width;
+            const bw = Math.min(220, textWidth + 16);
+            const bh = 22;
+            const bx = Math.max(10, Math.min(canvas.width - bw - 10, x - bw / 2));
+            const by = y - bh;
+
+            // Bubble background
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(bx, by, bw, bh);
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(bx, by, bw, bh);
+
+            // Text
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'center';
+            ctx.fillText(text, bx + bw / 2, by + 14);
+        }
+
+        renderOffice();
+
+        // Exact Click-to-Select Logic with Canvas Coordinate Transformation
+        canvas.addEventListener('click', function(e) {
+            const rect = canvas.getBoundingClientRect();
+            // Crucial fix: Proportional coordinate calculation
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const clickX = (e.clientX - rect.left) * scaleX;
+            const clickY = (e.clientY - rect.top) * scaleY;
+
+            let found = null;
+            agents.forEach(a => {
+                const dist = Math.hypot(a.x - clickX, a.y - clickY);
+                if (dist < 32) {
+                    found = a.id;
+                }
+            });
+
+            if (found) {
+                selectAgent(found);
+            }
+        });
+
+        // Hover cursor feedback
+        canvas.addEventListener('mousemove', function(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const mouseX = (e.clientX - rect.left) * scaleX;
+            const mouseY = (e.clientY - rect.top) * scaleY;
+
+            let isHovering = false;
+            agents.forEach(a => {
+                if (Math.hypot(a.x - mouseX, a.y - mouseY) < 30) {
+                    isHovering = true;
+                }
+            });
+            canvas.style.cursor = isHovering ? 'pointer' : 'default';
+        });
+
+        function selectAgent(agentId) {
+            selectedAgentId = agentId;
+            const agent = agents.find(a => a.id === agentId);
+            if (!agent) return;
+
+            // Highlight toolbar button
+            agents.forEach(a => {
+                const btn = document.getElementById('pill-' + a.id);
+                if (btn) {
+                    btn.className = (a.id === agentId)
+                        ? 'agent-pill text-[10px] px-2.5 py-1 rounded font-mono border transition-all flex items-center space-x-1.5 bg-indigo-900/80 border-indigo-400 text-white shadow'
+                        : 'agent-pill text-[10px] px-2.5 py-1 rounded font-mono border transition-all flex items-center space-x-1.5 bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200';
+                }
+            });
+
+            // Update terminal header
+            document.getElementById('activeAgentDot').style.backgroundColor = agent.color;
+            document.getElementById('chatAgentTitle').innerText = agent.name.toUpperCase();
+            document.getElementById('agentRoleTag').innerText = agent.inCabin ? 'Executive Cabin' : agent.onBreak ? 'Break Lounge' : 'Floor Desk';
+            updateHUD();
+
+            // Trigger speech bubble
+            speechBubble = {
+                text: `${agent.shortName}: Online & Ready`,
+                agentId: agent.id,
+                timer: 120
+            };
+
+            // If on break, explain state
+            if (agent.onBreak) {
+                const box = document.getElementById('chatResponseBox');
+                const answer = document.getElementById('chatAnswer');
+                const source = document.getElementById('chatSource');
+                box.classList.remove('hidden');
+                answer.innerText = `${agent.name} is currently in the Break Lounge sipping coffee.\nType "You're up" or ask your domain questions to interact!`;
+                source.innerText = 'Shift Telemetry Status: ON BREAK';
+            }
+        }
+        window.selectAgent = selectAgent;
+
+        function updateHUD() {
+            const agent = agents.find(a => a.id === selectedAgentId);
+            if (!agent) return;
+            document.getElementById('hudName').innerText = agent.name;
+            document.getElementById('hudAction').innerText = agent.onBreak ? 'Taking a coffee break in the lounge' : agent.role;
+            document.getElementById('agentStatusBadge').innerText = agent.status;
+            document.getElementById('agentStatusBadge').className = agent.onBreak 
+                ? 'text-[10px] px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800' 
+                : 'text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300';
+            document.getElementById('hudLocation').innerText = agent.inCabin ? 'Executive Glass Cabin (Room 101)' : agent.onBreak ? 'Break Lounge (Level 1)' : 'Floor Workstation';
+        }
+
+        // Shift & Break Toggle
+        document.getElementById('shiftToggleBtn').addEventListener('click', function() {
+            isAfterNinePM = !isAfterNinePM;
+            const ind = document.getElementById('shiftIndicator');
+            const lbl = document.getElementById('shiftLabel');
+
+            if (isAfterNinePM) {
+                ind.className = 'h-2 w-2 rounded-full bg-amber-400 animate-ping';
+                lbl.innerText = 'SHIFT: AFTER 9 PM (BREAK TIME)';
+                agents.forEach(a => {
+                    if (!a.inCabin) {
+                        a.onBreak = true;
+                        a.status = 'ON BREAK';
+                    }
+                });
+            } else {
+                ind.className = 'h-2 w-2 rounded-full bg-emerald-400';
+                lbl.innerText = 'SHIFT: WORK HOURS (DAY)';
+                agents.forEach(a => {
+                    a.onBreak = false;
+                    a.status = 'AT DESK';
+                });
+            }
+            updateHUD();
+        });
+
+        // Send Chat (With Dynamic Redirection & Speech Bubbles)
+        document.getElementById('chatBtn').addEventListener('click', async function() {
+            const input = document.getElementById('chatInput');
+            const prompt = input.value.trim();
+            if (!prompt) return;
+
+            const btn = document.getElementById('chatBtn');
+            const box = document.getElementById('chatResponseBox');
+            const answer = document.getElementById('chatAnswer');
+            const source = document.getElementById('chatSource');
+            const tenant = document.getElementById('tenantSelect').value;
+
+            btn.disabled = true;
+            btn.innerText = 'Processing...';
+            box.classList.remove('hidden');
+            answer.innerText = 'Transmitting command to workstation...';
+            source.innerText = '';
+
+            try {
+                const res = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        tenant_id: tenant,
+                        session_id: clientSessionId,
+                        target_agent_id: selectedAgentId
+                    })
+                });
+                const data = await res.json();
+                answer.innerText = data.answer;
+                source.innerText = 'Engine Source: ' + data.source;
+
+                // Trigger speech bubble
+                speechBubble = {
+                    text: 'Response delivered',
+                    agentId: selectedAgentId,
+                    timer: 150
+                };
+
+                // Wake up from break if ordered
+                if (data.wake_up) {
+                    const curr = agents.find(a => a.id === selectedAgentId);
+                    if (curr) {
+                        curr.onBreak = false;
+                        curr.status = 'AT DESK';
+                        updateHUD();
+                    }
+                }
+
+                // If redirected to another domain, smoothly hand off
+                if (data.redirect_agent && data.redirect_agent !== selectedAgentId) {
+                    setTimeout(() => {
+                        selectAgent(data.redirect_agent);
+                        speechBubble = {
+                            text: 'Domain handoff received',
+                            agentId: data.redirect_agent,
+                            timer: 180
+                        };
+                    }, 500);
+                }
+            } catch (err) {
+                answer.innerText = 'Workstation error: ' + err.message;
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Send';
+            }
+        });
+
+        // Export Brief
+        document.getElementById('exportBtn').addEventListener('click', function() {
+            const tenant = document.getElementById('tenantSelect').value;
+            window.open('/api/export?tenant_id=' + tenant, '_blank');
+        });
+
+        // Multi-Agent Debate Simulation
+        document.getElementById('debateBtn').addEventListener('click', async function() {
+            const drawer = document.getElementById('debateDrawer');
+            const container = document.getElementById('debateStepsContainer');
+            drawer.classList.remove('hidden');
+            container.innerHTML = '<p class="text-purple-400 mono animate-pulse">Orchestrating inter-agent handoffs...</p>';
+
+            try {
+                const res = await fetch('/api/collaborate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ product: "Orthopedic King Mattress", quantity: 60, tenant_id: "dream_sleep" })
+                });
+                const data = await res.json();
+                
+                container.innerHTML = data.chain_steps.map(function(s, idx) {
+                    const isVerdict = idx === data.chain_steps.length - 1;
+                    const cardBg = isVerdict ? 'bg-indigo-950/80 border-indigo-700/60' : 'bg-slate-950 border-slate-800';
+                    return `
+                        <div class="p-2 rounded-lg border ${cardBg} space-y-1">
+                            <div class="flex items-center justify-between">
+                                <span class="font-bold text-white text-[11px]" style="color:${s.color}">${s.agent}</span>
+                                <span class="text-[9px] mono text-slate-400">${s.action} -> ${s.handoff_to}</span>
+                            </div>
+                            <p class="text-[11px] text-slate-300 leading-relaxed">${s.thought}</p>
+                        </div>
+                    `;
+                }).join('');
+            } catch(e) {
+                container.innerHTML = '<p class="text-rose-400">Debate simulation failed: ' + e.message + '</p>';
+            }
+        });
+
+        // Fetch Actions
+        async function fetchActions() {
+            try {
+                const tenant = document.getElementById('tenantSelect').value;
+                const res = await fetch('/api/actions?tenant_id=' + tenant);
+                const actions = await res.json();
+                const container = document.getElementById('actionQueueContainer');
+                document.getElementById('actionCountBadge').innerText = actions.length + ' PENDING';
+
+                if (actions.length === 0) {
+                    container.innerHTML = '<p class="text-xs text-slate-500 italic">No actions pending human approval.</p>';
+                    return;
+                }
+
+                container.innerHTML = actions.map(function(act) {
+                    const impactBg = act.impact_level === 'CRITICAL' ? 'bg-rose-900/60 text-rose-300 border-rose-700/50' :
+                                     act.impact_level === 'HIGH' ? 'bg-amber-900/60 text-amber-300 border-amber-700/50' :
+                                     'bg-indigo-900/60 text-indigo-300 border-indigo-700/50';
+                    return `
+                        <div class="p-2 bg-slate-950 rounded-lg border border-slate-800 space-y-1 text-xs">
+                            <div class="flex items-center justify-between">
+                                <span class="font-bold text-white">${act.action_title}</span>
+                                <span class="text-[9px] px-1.5 py-0.5 rounded font-mono border ${impactBg}">${act.impact_level}</span>
+                            </div>
+                            <p class="text-[11px] text-slate-400 leading-snug">${act.payload_details}</p>
+                            <div class="flex items-center justify-between pt-1">
+                                <span class="text-[10px] mono text-slate-500">${act.origin_agent}</span>
+                                <div class="flex space-x-1.5">
+                                    <button onclick="approveAction('${act.action_id}', 'REJECTED')" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px]">Reject</button>
+                                    <button onclick="approveAction('${act.action_id}', 'APPROVED')" class="px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-[10px]">Approve</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch(e) {
+                console.error('Error fetching actions:', e);
+            }
+        }
+
+        async function approveAction(actionId, decision) {
+            try {
+                await fetch('/api/actions/' + actionId + '/execute', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ decision: decision })
+                });
+                fetchActions();
+            } catch(e) {
+                alert('Action execution failed: ' + e.message);
+            }
+        }
+        window.approveAction = approveAction;
+        fetchActions();
+        document.getElementById('tenantSelect').addEventListener('change', fetchActions);
+
+        // Audit Button
+        document.getElementById('auditBtn').addEventListener('click', async function() {
+            const btn = document.getElementById('auditBtn');
+            const tenant = document.getElementById('tenantSelect').value;
+            const container = document.getElementById('reportContainer');
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="animate-spin mr-2">⚙</span> Running...';
+            container.innerHTML = '<p class="text-indigo-400 mono">Executing concurrent audit for [' + tenant + ']...</p>';
+
+            try {
+                const res = await fetch('/api/audit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tenant_id: tenant })
+                });
+                const report = await res.json();
+
+                const discrepancies = report.financial_summary.tax_discrepancies.length > 0 
+                    ? report.financial_summary.tax_discrepancies.map(d => '<li class="text-amber-300">' + d + '</li>').join('') 
+                    : '<li>No tax discrepancies</li>';
+
+                const shortages = report.inventory_summary.critical_shortages.map(s => 
+                    '<li class="text-pink-300">' + s.item_name + ' deficit: ' + s.deficit + ' ' + s.unit + '</li>'
+                ).join('');
+
+                container.innerHTML = 
+                    '<div class="p-2.5 bg-slate-950 rounded-lg border border-slate-800 space-y-1.5">' +
+                        '<p class="font-bold text-white text-xs">Audit Findings (' + report.tenant_id + ')</p>' +
+                        '<p class="text-slate-300 text-[11px]">' + report.synthesis_summary + '</p>' +
+                        '<div class="border-t border-slate-800 pt-1.5">' +
+                            '<span class="text-amber-400 font-semibold block mb-0.5 text-[11px]">Discrepancies & Deficits:</span>' +
+                            '<ul class="list-disc pl-3 text-slate-300 text-[11px] space-y-0.5">' + discrepancies + shortages + '</ul>' +
+                        '</div>' +
+                    '</div>';
+            } catch (err) {
+                container.innerHTML = '<p class="text-rose-400">Error executing audit: ' + err.message + '</p>';
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'Run Audit';
+            }
+        });
+    </script>
+</body>
+</html>

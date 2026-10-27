@@ -1,0 +1,8 @@
+﻿---
+description: Amsavision Multi-Agent System Rules
+globs: backend/**/*.py
+---
+# Operational Standards
+- Always use Python 3.11+ async patterns (asyncio.TaskGroup).
+- All inter-agent data passing must use strict Pydantic v2 schemas.
+- Every tool/query must filter by tenant_id ("ams_retail", "ams_assoc", "mvm_dist", "dream_sleep", "ALL").

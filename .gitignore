@@ -1,0 +1,11 @@
+﻿venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.log
+apply_updates.py
+fix_*.py
+seed_db.py
+repair_test_suite.py
+restore_project.py
+patch_system.py
